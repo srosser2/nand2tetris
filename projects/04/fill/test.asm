@@ -1,0 +1,8 @@
+@SCREEN
+D=-1
+M=D
+@SCREEN
+D=A
+A=D+1
+D=-1
+M=D
