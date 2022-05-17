@@ -127,12 +127,23 @@ CHIP CPU {
     // jne
     And(a=instruction[0], b=instruction[2], out=preJne);
     And(a=preJne, b=notZero, out=jne);
+    // jle
+    And(a=instruction[1], b=instruction[2], out=preJle);
+    Or(a=zero, b=negative, out=jleNgZr);
+    And(a=preJle, b=jleNgZr, out=jle);
+    // jmp
+    And(a=instruction[0], b=instruction[1], out=preJmp);
+    And(a=instruction[2], b=preJmp, out=jmp);
 
     Or8Way(
-        in[0]=instruction[0],
-        in[1]=instruction[1],
-        in[2]=instruction[2],
-        in[3..7]=false,
+        in[0]=jgt,
+        in[1]=jeq,
+        in[2]=jge,
+        in[3]=jlt,
+        in[4]=jne,
+        in[5]=jle,
+        in[6]=jmp,
+        in[6..7]=false,
         out=shouldJump
     );
 
