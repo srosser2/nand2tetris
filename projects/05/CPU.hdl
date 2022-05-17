@@ -40,60 +40,124 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
-
-    // Mux16 select A-Register (addressM) or inM
-    // sel: (a bit) if 0 set A-Register to outALU, if 1 inM
-    Mux16(
-        a=instruction,
-        b=inM,
-        sel=instruction[0],
-        out[0..15]=outMux16Mem
+    // Load in if A-Instruction or dest bit instruction[5]
+    Not(
+        in=instruction[15],
+        out=aInstruction
     );
 
-//    ALU(
-//        x[16]=outDReg,
-//        y[16]=outMux16Mem,
-//        zx=instruction[4],
-//        nx=instruction[5],
-//        zy=instruction[6],
-//        ny=instruction[7],
-//        f=instruction[8],
-//        no=instruction[9],
-//        out[16]=outM,
-//        zr=outZr,
-//        ng=outNg
-//    );
+    Or(
+        a=aInstruction,
+        b=instruction[5],
+        out=loadA
+    );
 
-    // D Register
-//    Register(
-//        in[16]=outM,
-//        load=instruction[12],
-//        out[16]=outDReg
-//    );
+    Mux16(
+        a=instruction,
+        b=outALU,
+        sel=instruction[15],
+        out=inAReg
+    ); 
 
-    // Mux16 select outM or instruction
-    // sel: is it an A instructin or C instruction?
-//    Mux16(
-//        a[16]=outM,
-//        b[16]=instruction[0..15],
-//        sel=instruction[3],
-//        out[16]=outMux16I
-//    )
+    ARegister(
+        in=inAReg,
+        load=loadA,
+        out=outAReg,
+        out[0..14]=addressM
+    );
 
-    // A Register
-//    Register(
-//        in[16]=outMux16I,
-//        load=instruction[11],
-//        out[16]=addressM
-//    );
+    // In the case of a C-instruction, the single a -bit determines
+    // whether the ALU will operate on the A register input or on the M input,
+    And(
+        a=instruction[12],
+        b=instruction[15],
+        out=selectInput
+    );
 
-    // PC
-//    PC(
-//        in[16]=addressM,
-//        load=...,
-//        inc=...,
-//        reset=reset,
-//        out[16]=...
-//    );
+    Mux16(
+        a=outAReg,
+        b=inM,
+        sel=selectInput,
+        out=inALUY
+    );
 
+    DRegister(
+        in=outALU,
+        load=instruction[4],
+        out=inALUX
+    );
+
+    ALU(
+        x=inALUX,
+        y=inALUY,
+        zx=instruction[11], // xxxx oxxx xxxx xxxx
+        nx=instruction[10], // xxxx xoxx xxxx xxxx
+        zy=instruction[9],  // xxxx xxox xxxx xxxx
+        ny=instruction[8],  // xxxx xxxo xxxx xxxx
+        f=instruction[7],   // xxxx xxxx oxxx xxxx
+        no=instruction[6],  // xxxx xxxx xoxx xxxx
+        out=outALU,
+        out=outM,
+        zr=zero,
+        ng=negative
+    );
+
+    // Write M?
+    And(
+        a=instruction[15], // If C-Instruction
+        b=instruction[3], // If dest M Bit
+        out=writeM
+    );
+
+    // Jump
+    // Positive
+    Not(in=zero, out=notZero);
+    Not(in=negative, out=notNeg);
+    And(a=notZero, b=notNeg, out=positive);
+
+    // jgt
+    And(a=positive, b=instruction[0], out=jgt);
+    // jeq
+    And(a=zero, b=instruction[1], out=jeq);
+    // jge
+    And(a=instruction[0], b=instruction[1], out=preJge);
+    And(a=preJge, b=positive, out=jge);
+    // jlt
+    And(a=negative, b=instruction[2], out=jlt);
+    // jne
+    And(a=instruction[0], b=instruction[2], out=preJne);
+    And(a=preJne, b=notZero, out=jne);
+
+    Or8Way(
+        in[0]=instruction[0],
+        in[1]=instruction[1],
+        in[2]=instruction[2],
+        in[3..7]=false,
+        out=shouldJump
+    );
+
+    Not(
+        in=loadPC,
+        out=notLoadPC
+    );
+
+    Or(
+        a=notLoadPC,
+        b=aInstruction,
+        out=increase
+    );
+
+    And(
+        a=shouldJump,
+        b=instruction[15],
+        out=loadPC
+    );
+
+    PC(
+        in=outAReg,
+        load=loadPC,
+        inc=increase,
+        reset=reset,
+        out[0..14]=pc
+    );
 }
