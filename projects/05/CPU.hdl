@@ -81,9 +81,15 @@ CHIP CPU {
         out=inALUY
     );
 
+    And(
+        a=instruction[15],
+        b=instruction[4],
+        out=loadD
+    );
+
     DRegister(
         in=outALU,
-        load=instruction[4],
+        load=loadD,
         out=inALUX
     );
 
