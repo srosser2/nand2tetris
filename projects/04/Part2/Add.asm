@@ -1,0 +1,14 @@
+@sum
+M=0
+@n1
+D=M
+@sum
+M=D
+@r1
+D=M
+@sum
+D=D+M
+M=D
+(END)
+@END
+0;JMP
